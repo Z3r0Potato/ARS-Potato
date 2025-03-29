@@ -276,7 +276,39 @@ if ($confirmStr === '1') {
     $agi->verbose("예약 취소 선택됨", 1);
 }
 
+// -------------------------------------------------------
+// 추가: 예약 결과 콜백 웹훅 전송
+// URL: https://mhdw95wb-5000.asse.devtunnels.ms/api/webhook/ars-callback
+// Method: POST
+// Content-Type: application/json
+// Request Body:
+// {
+//     "reservation_id": 전화번호,
+//     "status": "confirmed" 또는 "rejected",
+//     "callback_time": "YYYY-MM-DD HH:mm:ss"
+// }
+$callbackPayload = json_encode([
+    "reservation_id" => $callerId,  // 예약ID 대신 전화번호 사용
+    "status"       => ($confirmStr === '1') ? "confirmed" : "rejected",
+    "callback_time"=> date("Y-m-d H:i:s")
+]);
+$callback_url = "https://6a34-61-254-29-178.ngrok-free.app/api/webhook/ars-callback";
+$ch = curl_init($callback_url);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $callbackPayload);
+curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$callback_result = curl_exec($ch);
+if (curl_errno($ch)) {
+    $agi->verbose("Webhook callback error: " . curl_error($ch), 1);
+} else {
+    $agi->verbose("Webhook callback success", 1);
+}
+curl_close($ch);
+
+// -------------------------------------------------------
 // 감사 메시지
+// -------------------------------------------------------
 $agi->stream_file("hospital_reservation/thank_you", "");
 $agi->verbose("감사 메시지 재생 완료", 1);
 
